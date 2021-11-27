@@ -2,11 +2,9 @@
 const assert = require('assert')
 const ganache = require('ganache-cli')
 const Web3 = require('web3')
-
-const {interface: abInterface, bytecode} = require("../compile")
-
 const web3 = new Web3(ganache.provider())
 
+const {abi, evm} = require("../compile")
 
 describe('Inbox', function () {
     let accounts, inbox
@@ -14,8 +12,8 @@ describe('Inbox', function () {
     beforeEach(async () => {
         accounts = await web3.eth.getAccounts()
 
-        inbox = await new web3.eth.Contract(JSON.parse(abInterface))
-            .deploy({data: bytecode, arguments: ["hi there!"]})
+        inbox = await new web3.eth.Contract(abi)
+            .deploy({data: evm.bytecode.object, arguments: ["hi there!"]})
             .send({from: accounts[0], gas: 1000000})
     })
 
