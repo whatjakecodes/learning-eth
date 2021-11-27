@@ -9,8 +9,8 @@ const web3 = new Web3(ganache.provider());
 
 
 describe('Inbox', function () {
-    let accounts;
-    let inbox;
+    let accounts, inbox
+
     beforeEach(async () => {
         accounts = await web3.eth.getAccounts()
 
@@ -19,11 +19,7 @@ describe('Inbox', function () {
             .send({from: accounts[0], gas: '1000000'})
     })
 
-    it('should load accounts', function () {
-        console.log(accounts)
-    });
-
-    it('should load the inbox', function () {
-        console.log(inbox)
+    it('should deploy a contract', function () {
+        assert.ok(inbox.options.address)
     })
 })
