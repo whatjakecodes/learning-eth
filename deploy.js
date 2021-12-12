@@ -1,7 +1,7 @@
 // deploy code will go here
 const HDWalletProvider = require('@truffle/hdwallet-provider')
 const Web3 = require('web3')
-const {abi,evm} = require('./compile')
+const {abi,evm} = require('./compile-fn')
 
 const provider = new HDWalletProvider(
     'walk thought bachelor beach salute label aim loan junior coffee inhale worry',
