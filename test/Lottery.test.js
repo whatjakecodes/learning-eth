@@ -3,17 +3,23 @@ const ganache = require('ganache-cli')
 const Web3 = require('web3')
 
 const web3 = new Web3(ganache.provider())
-const compile = require("../compile-fn")
-const {abi, evm} = compile("Lottery")
-
-let lottery, accounts
-
-beforeEach(async () => {
-    accounts = await web3.eth.getAccounts()
-    lottery = await getLottery()
-})
+const {compileFn} = require("../compile-fn")
 
 describe('Lottery Contract', async () => {
+    let lottery, accounts
+    let abi, evm
+
+    before(() => {
+        const contract = compileFn("Lottery")
+        abi = contract.abi
+        evm = contract.evm
+    })
+
+    beforeEach(async () => {
+        accounts = await web3.eth.getAccounts()
+        lottery = await getLottery(abi, evm, accounts[0])
+    })
+
     it('should deploy', async () => {
         assert.ok(lottery.contract.options.address)
         const players = await lottery.getPlayers(accounts[0])
@@ -46,12 +52,24 @@ describe('Lottery Contract', async () => {
         }
         assert.fail("error should have been thrown")
     })
+
+    it('should only allow manager to pick winner', async () => {
+        await lottery.enter(accounts[1], '0.01')
+        await lottery.enter(accounts[2], '0.03')
+        try {
+            await lottery.pickWinner(accounts[1])
+        } catch (error) {
+            assert(error)
+            return
+        }
+        assert.fail("error should have been thrown")
+    })
 })
 
-const getLottery = async () => {
+const getLottery = async (abi, evm, managerAccount) => {
     const contract = await new web3.eth.Contract(abi)
         .deploy({data: evm.bytecode.object})
-        .send({from: accounts[0], gas: 1000000})
+        .send({from: managerAccount, gas: 1000000})
 
     const enter = async (account, etherValue) => {
         const value = web3.utils.toWei(etherValue, 'ether')
@@ -66,9 +84,14 @@ const getLottery = async () => {
         return await contract.methods.getPlayers().call({from})
     }
 
+    const pickWinner = async (from) => {
+        return await contract.methods.pickWinner().call({from})
+    }
+
     return {
         enter,
         getPlayers,
+        pickWinner,
         contract
     }
 }

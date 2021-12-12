@@ -4,11 +4,16 @@ const ganache = require('ganache-cli')
 const Web3 = require('web3')
 const web3 = new Web3(ganache.provider())
 
-const compile = require("../compile-fn")
-const {abi, evm} = compile("Inbox")
+const {compileFn} = require("../compile-fn")
 
-describe('Inbox', function () {
+xdescribe('Inbox', function () {
     let accounts, inbox
+    let abi, evm
+    before(() => {
+        const contract = compileFn("Inbox")
+        abi = contract.abi
+        evm = contract.evm
+    })
 
     beforeEach(async () => {
         accounts = await web3.eth.getAccounts()
