@@ -7,13 +7,7 @@ const {compileFn} = require("../compile-fn")
 
 describe('Lottery Contract', async () => {
     let lottery, accounts
-    let abi, evm
-
-    before(() => {
-        const contract = compileFn("Lottery")
-        abi = contract.abi
-        evm = contract.evm
-    })
+    const {abi, evm} = compileFn("Lottery")
 
     beforeEach(async () => {
         accounts = await web3.eth.getAccounts()
@@ -57,12 +51,31 @@ describe('Lottery Contract', async () => {
         await lottery.enter(accounts[1], '0.01')
         await lottery.enter(accounts[2], '0.03')
         try {
-            await lottery.pickWinner(accounts[1])
+            await lottery.contract.methods.pickWinner().send({from: accounts[1]})
         } catch (error) {
-            assert(error)
+            assert.ok(error)
             return
         }
         assert.fail("error should have been thrown")
+    })
+
+    it('should send money to winner and reset players', async () => {
+        await lottery.enter(accounts[1], '2')
+        await lottery.enter(accounts[2], '3')
+        const lotteryValue = 5
+
+        const account1StartBalance = await lottery.getPlayerBalance(accounts[1])
+        const account2StartBalance = await lottery.getPlayerBalance(accounts[2])
+
+        await lottery.pickWinner()
+
+        const account1EndBalance = await lottery.getPlayerBalance(accounts[1])
+        const account2EndBalance = await lottery.getPlayerBalance(accounts[2])
+
+        const didAccount1Win = (account1EndBalance - account1StartBalance) === lotteryValue
+        const didAccount2Win = (account2EndBalance - account2StartBalance) === lotteryValue
+
+        assert((didAccount1Win && !didAccount2Win) || (!didAccount1Win && didAccount2Win))
     })
 })
 
@@ -71,12 +84,11 @@ const getLottery = async (abi, evm, managerAccount) => {
         .deploy({data: evm.bytecode.object})
         .send({from: managerAccount, gas: 1000000})
 
-    const enter = async (account, etherValue) => {
-        const value = web3.utils.toWei(etherValue, 'ether')
+    const enter = async (from, etherValue) => {
+        const weiValue = web3.utils.toWei(etherValue, 'ether')
         return await contract.methods.enter().send({
-            from: account,
-            value,
-            gas: 300000
+            from,
+            value: weiValue
         })
     }
 
@@ -84,13 +96,19 @@ const getLottery = async (abi, evm, managerAccount) => {
         return await contract.methods.getPlayers().call({from})
     }
 
-    const pickWinner = async (from) => {
-        return await contract.methods.pickWinner().call({from})
+    const getPlayerBalance = async (account) => {
+        const weiBalance = await web3.eth.getBalance(account);
+        return web3.utils.fromWei(weiBalance, 'ether')
+    }
+
+    const pickWinner = async () => {
+        return await contract.methods.pickWinner().send({from: managerAccount})
     }
 
     return {
         enter,
         getPlayers,
+        getPlayerBalance,
         pickWinner,
         contract
     }
