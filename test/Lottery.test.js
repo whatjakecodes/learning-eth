@@ -26,6 +26,9 @@ describe('Lottery Contract', async () => {
 
         assert.equal(players.length, 1)
         assert.equal(players[0], accounts[0])
+
+        const balance = await lottery.getBalance(lottery.contract.options.address)
+        assert.equal(balance, '0.02')
     })
 
     it('should let multiple accounts enter the lottery', async () => {
@@ -64,18 +67,31 @@ describe('Lottery Contract', async () => {
         await lottery.enter(accounts[2], '3')
         const lotteryValue = 5
 
-        const account1StartBalance = await lottery.getPlayerBalance(accounts[1])
-        const account2StartBalance = await lottery.getPlayerBalance(accounts[2])
+        const account1StartBalance = await lottery.getBalance(accounts[1])
+        const account2StartBalance = await lottery.getBalance(accounts[2])
 
         await lottery.pickWinner()
 
-        const account1EndBalance = await lottery.getPlayerBalance(accounts[1])
-        const account2EndBalance = await lottery.getPlayerBalance(accounts[2])
+        const account1EndBalance = await lottery.getBalance(accounts[1])
+        const account2EndBalance = await lottery.getBalance(accounts[2])
 
         const didAccount1Win = (account1EndBalance - account1StartBalance) === lotteryValue
         const didAccount2Win = (account2EndBalance - account2StartBalance) === lotteryValue
 
         assert((didAccount1Win && !didAccount2Win) || (!didAccount1Win && didAccount2Win))
+    })
+
+    it('should reset lottery after picking a winner', async () => {
+        await lottery.enter(accounts[1], '1')
+        await lottery.enter(accounts[2], '1')
+
+        await lottery.pickWinner()
+
+        const players = await lottery.getPlayers(accounts[1])
+        assert.equal(players.length, 0)
+
+        const balance = await web3.eth.getBalance(lottery.contract.options.address)
+        assert.equal(balance, 0)
     })
 })
 
@@ -96,7 +112,7 @@ const getLottery = async (abi, evm, managerAccount) => {
         return await contract.methods.getPlayers().call({from})
     }
 
-    const getPlayerBalance = async (account) => {
+    const getBalance = async (account) => {
         const weiBalance = await web3.eth.getBalance(account);
         return web3.utils.fromWei(weiBalance, 'ether')
     }
@@ -108,7 +124,7 @@ const getLottery = async (abi, evm, managerAccount) => {
     return {
         enter,
         getPlayers,
-        getPlayerBalance,
+        getBalance,
         pickWinner,
         contract
     }
